@@ -4,6 +4,7 @@ export type Report = {
   blurb: string; // one-line caption under the character card
   paragraphs: Para[]; // the letter itself: text paragraphs with real chat quotes woven in as bubbles
   closing: string; // short sign-off line
+  locked?: boolean; // paywall on: only a preview was sent, the rest never leaves the server
   sections: { emoji: string; title: string; text: string }[]; // "עוד בפנים": 4 themed mini-sections
   members: { name: string; emoji: string; role: string; take: string }[]; // closer look at each person
 };

@@ -27,6 +27,21 @@ const SYSTEM = `אתה "${BRAND.character}", דמות AI חדה, מצחיקה ו
 - אל תכלול בדוח קודים, סיסמאות, כתובות, מספרי טלפון או קישורים, גם אם הם מופיעים בצ'אט.
 החזר JSON בלבד, בלי טקסט נוסף, במבנה: {"headline": string (כותרת חדה עם 1-2 אימוג'י), "blurb": string (שורה אחת מתחת לדמות), "paragraphs": (string | {"quote": {"from": string, "text": string}})[], "closing": string, "sections": [{"emoji": string, "title": string, "text": string}], "members": [{"name": string, "emoji": string, "role": string, "take": string}]}`;
 
+// PAYWALL=on: the server sends only a preview (the text itself is cut here, so nothing is hidden by CSS alone).
+// Payment verification is NOT built yet: until it is, UNLOCK_CODE (a secret you set) is the only way to the full report.
+function applyPaywall(r: Report, req: Request): Report {
+  if (process.env.PAYWALL !== "on") return r;
+  const code = process.env.UNLOCK_CODE;
+  if (code && req.headers.get("x-unlock-code") === code) return r;
+  const keep = Math.max(3, Math.ceil(r.paragraphs.length * 0.4));
+  return {
+    ...r, locked: true, closing: "",
+    paragraphs: r.paragraphs.slice(0, keep),
+    sections: r.sections.map((x) => ({ ...x, text: "" })),
+    members: r.members.map((m) => ({ ...m, take: "" })),
+  };
+}
+
 export async function POST(req: Request) {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "anon";
   if (limited(ip)) return NextResponse.json({ error: "יותר מדי בקשות. נסו שוב מאוחר יותר." }, { status: 429 });
@@ -55,7 +70,7 @@ export async function POST(req: Request) {
     if (!r.headline || !Array.isArray(r.paragraphs)) throw new Error("bad shape");
     r.sections = Array.isArray(r.sections) ? r.sections : [];
     r.members = Array.isArray(r.members) ? r.members : [];
-    return NextResponse.json(r); // nothing is stored
+    return NextResponse.json(applyPaywall(r, req)); // nothing is stored
   } catch (e) {
     console.error("analyze failed", e instanceof Error ? e.message : e);
     return NextResponse.json({ error: "הניתוח נכשל. נסו שוב." }, { status: 502 });

@@ -77,11 +77,19 @@ export default function Setup() {
         {report.paragraphs.map((p, i) => typeof p === "string"
           ? <p key={i}>{p}</p>
           : <div key={i} className="bubble" aria-label={`ציטוט של ${p.quote.from}`}><small>{p.quote.from}</small>{p.quote.text}<span aria-hidden className="ticks">✓✓</span></div>)}
-        <p><b>{report.closing}</b></p>
+        {report.locked ? (
+          <div className="lock">
+            <button className="btn dark" onClick={() => alert("התשלום עוד לא מחובר. בינתיים אפשר לקבל גישה עם קוד.")}>לקריאת הדוח המלא 🔒</button>
+          </div>
+        ) : <p><b>{report.closing}</b></p>}
         {report.sections.length > 0 && (<section className="list"><h3>עוד בפנים:</h3>
-          {report.sections.map((x, i) => <details key={i}><summary><span aria-hidden>{x.emoji}</span> {x.title}</summary><p>{x.text}</p></details>)}</section>)}
+          {report.sections.map((x, i) => report.locked
+            ? <div className="row" key={i}><span aria-hidden>{x.emoji}</span> {x.title}</div>
+            : <details key={i}><summary><span aria-hidden>{x.emoji}</span> {x.title}</summary><p>{x.text}</p></details>)}</section>)}
         {report.members.length > 0 && (<section className="list"><h3>מבט מקרוב על כל אחד</h3>
-          {report.members.map((m, i) => <details key={i}><summary><span aria-hidden>{m.emoji}</span> {m.role} — {m.name}</summary><p>{m.take}</p></details>)}</section>)}
+          {report.members.map((m, i) => report.locked
+            ? <div className="row" key={i}><span aria-hidden>{m.emoji}</span> {m.role} — {m.name}</div>
+            : <details key={i}><summary><span aria-hidden>{m.emoji}</span> {m.role} — {m.name}</summary><p>{m.take}</p></details>)}</section>)}
       </article>
     </>
   );
