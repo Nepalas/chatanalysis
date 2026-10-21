@@ -2,7 +2,7 @@ export type Msg = { t: number; from: string; text: string };
 
 // WhatsApp Android: "12/03/2024, 14:05 - Name: text"   iOS: "[12/03/2024, 14:05:33] Name: text"
 const WA = /^[‎‏]*\[?(\d{1,4})[./-](\d{1,2})[./-](\d{1,4}),?\s+(\d{1,2}):(\d{2})(?::\d{2})?\s*([AP]M|am|pm)?\]?\s*(?:-\s*)?([^:]{1,60}?):\s([\s\S]*)$/;
-const SYSTEM = /(הצפנה מקצה|end-to-end|<Media omitted>|<המדיה הושמטה>|image omitted|תמונה הושמטה|omitted$)/i;
+const SYSTEM = /(<attached: |changed this group|changed the group|created group|disappearing messages|<This message was edited>|הצפנה מקצה|end-to-end|<Media omitted>|<המדיה הושמטה>|image omitted|תמונה הושמטה|omitted$)/i;
 
 function toTime(a: number, b: number, c: number, h: number, m: number, ap?: string): number {
   // decide day/month order: a value >12 reveals it; default day-first (most of the world)
@@ -21,8 +21,8 @@ export function parseChat(raw: string): Msg[] {
   for (const line of lines) {
     const m = WA.exec(line);
     if (m) {
-      const text = m[8].trim();
-      out.push({ t: toTime(+m[1], +m[2], +m[3], +m[4], +m[5], m[6]), from: m[7].trim(), text });
+      const text = m[8].replace(/[\u200e\u200f]/g, "").trim();
+      out.push({ t: toTime(+m[1], +m[2], +m[3], +m[4], +m[5], m[6]), from: m[7].replace(/[\u200e\u200f]/g, "").trim(), text });
     } else if (out.length && line.trim()) {
       out[out.length - 1].text += "\n" + line.trim(); // multi-line message
     }
