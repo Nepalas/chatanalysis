@@ -4,6 +4,7 @@ import Link from "next/link";
 import JSZip from "jszip";
 import { BRAND } from "@/lib/brand";
 import { KINDS, PLATFORMS, type Kind, type Platform, type Report } from "@/lib/types";
+import type { Msg } from "@/lib/parse";
 import { parseByPlatform, senders } from "@/lib/parse";
 import { buildTranscript, computeStats } from "@/lib/stats";
 
@@ -13,6 +14,20 @@ async function readFile(f: File): Promise<string> {
   const entry = Object.values(zip.files).find((e) => !e.dir && e.name.toLowerCase().endsWith(".txt"));
   if (!entry) throw new Error("לא נמצא קובץ txt בתוך ה-zip.");
   return entry.async("string");
+}
+
+const norm = (t: string) => t.replace(/\s+/g, " ").trim();
+// Quote bubbles are shown only when the text really is in the chat, so the model can never invent one.
+function keepRealQuotes(r: Report, msgs: Msg[]): Report {
+  const corpus = msgs.map((m) => norm(m.text));
+  return {
+    ...r,
+    paragraphs: r.paragraphs.filter((p) => {
+      if (typeof p === "string") return true;
+      const q = norm(p.quote?.text ?? "");
+      return q.length > 1 && corpus.some((c) => c.includes(q));
+    }),
+  };
 }
 
 export default function Setup() {
@@ -40,7 +55,7 @@ export default function Setup() {
       });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error ?? "שגיאה");
-      setReport(j);
+      setReport(keepRealQuotes(j, msgs));
     } catch (e) { setErr(e instanceof Error ? e.message : "שגיאה לא צפויה"); }
     setBusy(false);
   }
@@ -54,11 +69,14 @@ export default function Setup() {
         <h1>{report.headline}</h1>
         <div className="who-card"><span className="avatar">🧢</span><div><b>{BRAND.character}</b><div className="note" style={{ margin: 0 }}>{report.blurb}</div></div></div>
         <button className="btn ghost" style={{ width: "100%", justifyContent: "center" }}
-          onClick={() => { const t = `${report.headline}\n\n${report.paragraphs.join("\n\n")}\n\n${report.closing}`; navigator.share ? navigator.share({ text: t }).catch(() => {}) : navigator.clipboard.writeText(t); }}>
+          onClick={() => { const t = `${report.headline}\n\n${report.paragraphs.map((x) => (typeof x === "string" ? x : `"${x.quote.text}" (${x.quote.from})`)).join("\n\n")}\n\n${report.closing}`; navigator.share ? navigator.share({ text: t }).catch(() => {}) : navigator.clipboard.writeText(t); }}>
           שיתוף הדוח
         </button>
         <div className="privacy">🛡️ הצ'אט המלא נקרא רק בדפדפן שלכם, ולשרת נשלח מדגם בלבד שלא נשמר.</div>
-        {report.paragraphs.map((p, i) => <p key={i}>{p}</p>)}
+        <div className="rule" aria-hidden><i /></div>
+        {report.paragraphs.map((p, i) => typeof p === "string"
+          ? <p key={i}>{p}</p>
+          : <div key={i} className="bubble" aria-label={`ציטוט של ${p.quote.from}`}><small>{p.quote.from}</small>{p.quote.text}<span aria-hidden className="ticks">✓✓</span></div>)}
         <p><b>{report.closing}</b></p>
         {report.sections.length > 0 && (<section className="list"><h3>עוד בפנים:</h3>
           {report.sections.map((x, i) => <details key={i}><summary><span aria-hidden>{x.emoji}</span> {x.title}</summary><p>{x.text}</p></details>)}</section>)}

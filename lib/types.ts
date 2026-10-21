@@ -1,7 +1,8 @@
+export type Para = string | { quote: { from: string; text: string } };
 export type Report = {
   headline: string; // punchy title with 1-2 emoji
   blurb: string; // one-line caption under the character card
-  paragraphs: string[]; // the letter itself, first person, witty
+  paragraphs: Para[]; // the letter itself: text paragraphs with real chat quotes woven in as bubbles
   closing: string; // short sign-off line
   sections: { emoji: string; title: string; text: string }[]; // "עוד בפנים": 4 themed mini-sections
   members: { name: string; emoji: string; role: string; take: string }[]; // closer look at each person
