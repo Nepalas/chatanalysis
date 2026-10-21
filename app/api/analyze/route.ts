@@ -22,10 +22,11 @@ const SYSTEM = `אתה "${BRAND.character}", דמות AI חדה, מצחיקה ו
 - אל תאבחן אנשים ואל תחרוץ גורל. אל תעודד התנהגות מזיקה.
 - אורך: 6 עד 9 פסקאות קצרות-בינוניות. פתח בפנייה קולעת לקוראים, סיים בעצה או שורה חמה.
 - בתוך "paragraphs" שלב 4 עד 6 ציטוטים מהצ'אט כבועות וואטסאפ, כאובייקט {"quote": {"from": שם השולח, "text": ההודעה}} שמופיע בין פסקאות הטקסט, מיד אחרי הפסקה שמסבירה אותו. הציטוט חייב להיות העתקה מדויקת של הודעה אחת (או חלק רצוף ממנה) מהתמליל, ובלי קישורים. בחר את הרגעים הכי מצחיקים, הכי מביכים או הכי מגלים: ההצהרה שנסתרה אחר כך, הנאום הארוך, הבטחה שלא קוימה.
+- "moments": בדיוק 4 סיטואציות מהצ'אט, "רגעים בלתי נשכחים". כל אחת: emoji, title (כותרת קצרה וקולעת), setup (משפט או שניים שמסבירים מה קרה, בלי לספר את הבדיחה), quotes (2 עד 5 הודעות ברצף כפי שנכתבו, העתקה מדויקת מהתמליל: {"from","text"}), punchline (משפט אחד שמסכם בחוכמה ובעוקצנות). בחר רגעים שונים זה מזה ומשתתפים שונים: בלבול, ריב קטן, הבטחה שלא קוימה, תוכנית שהתפוצצה, תגובה בלתי צפויה. אל תבחר רגע שמצחיק על חשבון מצב רפואי, גוף, נטייה, דת או פוליטיקה.
 - "sections": בדיוק 4 מקטעים נוספים, כל אחד עם כותרת בסגנון "<שם קצר>: <שאלה או הבטחה>" ופסקה קצרה (2-3 משפטים). לדוגמה: מסדר זיהוי (מי אתם ומה הבעיה שלכם), ציר הרשע (אויבים או דמויות שמחוץ לקבוצה שחוזרות בשיחה), רגעי הזהב (שטויות שאי אפשר להמציא, עם ציטוט אמיתי), התחזית (איך זה ייגמר באמת). התאם את הכותרות לשיחה.
 - "members": אובייקט לכל משתתף מהנתונים, עד 8: name כפי שמופיע בנתונים (בלי אימוג'י שבתוך השם), emoji אחד, role = כינוי קצר ומצחיק של 3-6 מילים לתפקיד האמיתי שלו בקבוצה, take = משפט אחד.
 - אל תכלול בדוח קודים, סיסמאות, כתובות, מספרי טלפון או קישורים, גם אם הם מופיעים בצ'אט.
-החזר JSON בלבד, בלי טקסט נוסף, במבנה: {"headline": string (כותרת חדה עם 1-2 אימוג'י), "blurb": string (שורה אחת מתחת לדמות), "paragraphs": (string | {"quote": {"from": string, "text": string}})[], "closing": string, "sections": [{"emoji": string, "title": string, "text": string}], "members": [{"name": string, "emoji": string, "role": string, "take": string}]}`;
+החזר JSON בלבד, בלי טקסט נוסף, במבנה: {"headline": string (כותרת חדה עם 1-2 אימוג'י), "blurb": string (שורה אחת מתחת לדמות), "paragraphs": (string | {"quote": {"from": string, "text": string}})[], "closing": string, "moments": [{"emoji": string, "title": string, "setup": string, "quotes": [{"from": string, "text": string}], "punchline": string}], "sections": [{"emoji": string, "title": string, "text": string}], "members": [{"name": string, "emoji": string, "role": string, "take": string}]}`;
 
 // PAYWALL=on: the server sends only a preview (the text itself is cut here, so nothing is hidden by CSS alone).
 // Payment verification is NOT built yet: until it is, UNLOCK_CODE (a secret you set) is the only way to the full report.
@@ -39,6 +40,8 @@ function applyPaywall(r: Report, req: Request): Report {
     paragraphs: r.paragraphs.slice(0, keep),
     sections: r.sections.map((x) => ({ ...x, text: "" })),
     members: r.members.map((m) => ({ ...m, take: "" })),
+    // the first situation is the free taste, the others show only their titles
+    moments: r.moments.map((m, i) => (i === 0 ? m : { ...m, setup: "", quotes: [], punchline: "" })),
   };
 }
 
@@ -57,7 +60,7 @@ export async function POST(req: Request) {
   try {
     const res = await client.messages.create({
       model: process.env.ANALYZE_MODEL ?? "claude-sonnet-5-5",
-      max_tokens: 4500,
+      max_tokens: 6000,
       system: SYSTEM,
       messages: [{
         role: "user",
@@ -70,6 +73,7 @@ export async function POST(req: Request) {
     if (!r.headline || !Array.isArray(r.paragraphs)) throw new Error("bad shape");
     r.sections = Array.isArray(r.sections) ? r.sections : [];
     r.members = Array.isArray(r.members) ? r.members : [];
+    r.moments = Array.isArray(r.moments) ? r.moments.slice(0, 4) : [];
     return NextResponse.json(applyPaywall(r, req)); // nothing is stored
   } catch (e) {
     console.error("analyze failed", e instanceof Error ? e.message : e);

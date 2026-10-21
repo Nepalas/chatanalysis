@@ -20,8 +20,12 @@ const norm = (t: string) => t.replace(/\s+/g, " ").trim();
 // Quote bubbles are shown only when the text really is in the chat, so the model can never invent one.
 function keepRealQuotes(r: Report, msgs: Msg[]): Report {
   const corpus = msgs.map((m) => norm(m.text));
+  const real = (t: string) => { const q = norm(t); return q.length > 1 && corpus.some((c) => c.includes(q)); };
   return {
     ...r,
+    // a situation with fewer than 2 verifiable quotes is dropped (a locked teaser has none by design)
+    moments: (r.moments ?? []).map((m) => (r.locked && !m.quotes.length ? m : { ...m, quotes: m.quotes.filter((q) => real(q.text)) }))
+      .filter((m) => (r.locked && !m.quotes.length) || m.quotes.length >= 2),
     paragraphs: r.paragraphs.filter((p) => {
       if (typeof p === "string") return true;
       const q = norm(p.quote?.text ?? "");
@@ -82,6 +86,16 @@ export default function Setup() {
             <button className="btn dark" onClick={() => alert("התשלום עוד לא מחובר. בינתיים אפשר לקבל גישה עם קוד.")}>לקריאת הדוח המלא 🔒</button>
           </div>
         ) : <p><b>{report.closing}</b></p>}
+        {report.moments.length > 0 && (<section className="moments"><h3>רגעים בלתי נשכחים</h3>
+          {report.moments.map((m, i) => (
+            <div className="moment" key={i}>
+              <div className="mt"><span aria-hidden>{m.emoji}</span> {m.title}</div>
+              {m.quotes.length > 0 ? (<>
+                <p>{m.setup}</p>
+                {m.quotes.map((q, j) => <div key={j} className="bubble"><small>{q.from}</small>{q.text}<span aria-hidden className="ticks">✓✓</span></div>)}
+                <p className="punch">{m.punchline}</p></>) : null}
+            </div>))}
+        </section>)}
         {report.sections.length > 0 && (<section className="list"><h3>עוד בפנים:</h3>
           {report.sections.map((x, i) => report.locked
             ? <div className="row" key={i}><span aria-hidden>{x.emoji}</span> {x.title}</div>

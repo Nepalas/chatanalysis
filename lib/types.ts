@@ -1,9 +1,11 @@
 export type Para = string | { quote: { from: string; text: string } };
+export type Moment = { emoji: string; title: string; setup: string; quotes: { from: string; text: string }[]; punchline: string };
 export type Report = {
   headline: string; // punchy title with 1-2 emoji
   blurb: string; // one-line caption under the character card
   paragraphs: Para[]; // the letter itself: text paragraphs with real chat quotes woven in as bubbles
   closing: string; // short sign-off line
+  moments: Moment[]; // ~4 situations: a short setup, 2-5 verbatim quote bubbles, a punchline
   locked?: boolean; // paywall on: only a preview was sent, the rest never leaves the server
   sections: { emoji: string; title: string; text: string }[]; // "עוד בפנים": 4 themed mini-sections
   members: { name: string; emoji: string; role: string; take: string }[]; // closer look at each person
