@@ -19,7 +19,10 @@ const SYSTEM = `אתה "${BRAND.character}", דמות AI חדה, מצחיקה ו
 - התייחס לכל משתתף בשמו. תן לכל אחד תפקיד/פרס מצחיק, ותצביע על דפוס אמיתי (מי יוזם, מי נעלם, מי שולח הודעות לילה, שינוי לאורך זמן).
 - אל תאבחן אנשים ואל תחרוץ גורל. אם יש כאב אמיתי בשיחה, היה עדין. אל תעודד התנהגות מזיקה.
 - אורך: 6 עד 9 פסקאות קצרות-בינוניות. פתח בפנייה קולעת לקוראים, סיים בעצה או שורה חמה.
-החזר JSON בלבד, בלי טקסט נוסף, במבנה: {"headline": string (כותרת חדה עם 1-2 אימוג'י), "blurb": string (שורה אחת מתחת לדמות), "paragraphs": string[], "closing": string}`;
+- "sections": בדיוק 4 מקטעים נוספים, כל אחד עם כותרת בסגנון "<שם קצר>: <שאלה או הבטחה>" ופסקה קצרה (2-3 משפטים). לדוגמה: מסדר זיהוי (מי אתם ומה הבעיה שלכם), ציר הרשע (אויבים או דמויות שמחוץ לקבוצה שחוזרות בשיחה), רגעי הזהב (שטויות שאי אפשר להמציא, עם ציטוט אמיתי), התחזית (איך זה ייגמר באמת). התאם את הכותרות לשיחה.
+- "members": אובייקט לכל משתתף מהנתונים, עד 8: name כפי שמופיע בנתונים (בלי אימוג'י שבתוך השם), emoji אחד, role = כינוי קצר ומצחיק של 3-6 מילים לתפקיד האמיתי שלו בקבוצה, take = משפט אחד.
+- אל תכלול בדוח קודים, סיסמאות, כתובות, מספרי טלפון או קישורים, גם אם הם מופיעים בצ'אט.
+החזר JSON בלבד, בלי טקסט נוסף, במבנה: {"headline": string (כותרת חדה עם 1-2 אימוג'י), "blurb": string (שורה אחת מתחת לדמות), "paragraphs": string[], "closing": string, "sections": [{"emoji": string, "title": string, "text": string}], "members": [{"name": string, "emoji": string, "role": string, "take": string}]}`;
 
 export async function POST(req: Request) {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "anon";
@@ -36,7 +39,7 @@ export async function POST(req: Request) {
   try {
     const res = await client.messages.create({
       model: process.env.ANALYZE_MODEL ?? "claude-sonnet-5-5",
-      max_tokens: 3000,
+      max_tokens: 4500,
       system: SYSTEM,
       messages: [{
         role: "user",
@@ -47,6 +50,8 @@ export async function POST(req: Request) {
     const json = text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1);
     const r = JSON.parse(json) as Report;
     if (!r.headline || !Array.isArray(r.paragraphs)) throw new Error("bad shape");
+    r.sections = Array.isArray(r.sections) ? r.sections : [];
+    r.members = Array.isArray(r.members) ? r.members : [];
     return NextResponse.json(r); // nothing is stored
   } catch (e) {
     console.error("analyze failed", e instanceof Error ? e.message : e);

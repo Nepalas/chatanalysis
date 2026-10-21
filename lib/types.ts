@@ -3,6 +3,8 @@ export type Report = {
   blurb: string; // one-line caption under the character card
   paragraphs: string[]; // the letter itself, first person, witty
   closing: string; // short sign-off line
+  sections: { emoji: string; title: string; text: string }[]; // "עוד בפנים": 4 themed mini-sections
+  members: { name: string; emoji: string; role: string; take: string }[]; // closer look at each person
 };
 export type Kind = "couple" | "friends" | "friend" | "family" | "work" | "other";
 export type Platform = "whatsapp" | "imessage" | "instagram" | "messenger";

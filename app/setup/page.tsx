@@ -60,6 +60,10 @@ export default function Setup() {
         <div className="privacy">🛡️ הצ'אט המלא נקרא רק בדפדפן שלכם, ולשרת נשלח מדגם בלבד שלא נשמר.</div>
         {report.paragraphs.map((p, i) => <p key={i}>{p}</p>)}
         <p><b>{report.closing}</b></p>
+        {report.sections.length > 0 && (<section className="list"><h3>עוד בפנים:</h3>
+          {report.sections.map((x, i) => <details key={i}><summary><span aria-hidden>{x.emoji}</span> {x.title}</summary><p>{x.text}</p></details>)}</section>)}
+        {report.members.length > 0 && (<section className="list"><h3>מבט מקרוב על כל אחד</h3>
+          {report.members.map((m, i) => <details key={i}><summary><span aria-hidden>{m.emoji}</span> {m.role} — {m.name}</summary><p>{m.take}</p></details>)}</section>)}
       </article>
     </>
   );
